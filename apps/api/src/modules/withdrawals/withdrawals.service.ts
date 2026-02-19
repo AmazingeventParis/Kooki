@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { StripeService } from '../stripe/stripe.service';
 import { AuditService } from '../audit/audit.service';
+import { EmailService } from '../email/email.service';
 import { getPlanByCode } from '@kooki/shared';
 import { WithdrawalStatus, DonationStatus } from '@prisma/client';
 
@@ -16,6 +17,7 @@ export class WithdrawalsService {
     private readonly prisma: PrismaService,
     private readonly stripe: StripeService,
     private readonly audit: AuditService,
+    private readonly email: EmailService,
   ) {}
 
   /**
@@ -164,6 +166,18 @@ export class WithdrawalsService {
         fundraiserId,
         stripeTransferId: transfer.id,
       });
+
+      // Send withdrawal email (non-blocking)
+      const owner = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (owner) {
+        this.email.sendWithdrawalInitiated({
+          email: owner.email,
+          name: owner.firstName || 'Organisateur',
+          amount,
+          currency: fundraiser.currency,
+          fundraiserTitle: fundraiser.title,
+        }).catch(() => {});
+      }
 
       return {
         ...withdrawal,

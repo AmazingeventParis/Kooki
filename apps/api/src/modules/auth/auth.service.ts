@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
 import { registerSchema, loginSchema } from '@kooki/shared';
 
 export interface JwtPayload {
@@ -20,6 +21,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly email: EmailService,
   ) {}
 
   async register(body: unknown) {
@@ -51,6 +53,12 @@ export class AuthService {
 
     // Generate token
     const token = this.generateToken(user.id, user.email, user.role);
+
+    // Send welcome email (non-blocking)
+    this.email.sendWelcome({
+      email: user.email,
+      firstName: user.firstName,
+    }).catch(() => {}); // Silent fail
 
     return {
       user: this.sanitizeUser(user),

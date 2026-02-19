@@ -13,6 +13,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { DonationStatus, FundraiserStatus, TaxReceiptStatus } from '@prisma/client';
 import Stripe from 'stripe';
+import { EmailService } from '../email/email.service';
 
 @Controller('webhooks')
 export class StripeWebhookController {
@@ -25,6 +26,7 @@ export class StripeWebhookController {
     private readonly stripeService: StripeService,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly email: EmailService,
   ) {}
 
   @Post('stripe')
@@ -115,7 +117,7 @@ export class StripeWebhookController {
 
       const donation = await this.prisma.donation.findUnique({
         where: { id: donationId },
-        include: { fundraiser: true },
+        include: { fundraiser: { include: { owner: true } } },
       });
 
       if (!donation) {
@@ -179,6 +181,31 @@ export class StripeWebhookController {
         fundraiserId: donation.fundraiserId,
       });
 
+      // Send emails (non-blocking — don't fail webhook on email error)
+      const updatedFundraiser = updated || donation.fundraiser;
+      this.email.sendDonationConfirmation({
+        donorEmail: donation.donorEmail,
+        donorName: donation.donorName,
+        amount: donation.amount,
+        currency: donation.currency,
+        fundraiserTitle: donation.fundraiser.title,
+        fundraiserSlug: donation.fundraiser.slug,
+      }).catch(e => this.logger.error(`Email donation confirmation failed: ${e.message}`));
+
+      if (donation.fundraiser.owner) {
+        this.email.sendNewDonationNotification({
+          ownerEmail: donation.fundraiser.owner.email,
+          ownerName: donation.fundraiser.owner.firstName || 'Organisateur',
+          donorName: donation.donorName,
+          amount: donation.amount,
+          currency: donation.currency,
+          fundraiserTitle: donation.fundraiser.title,
+          fundraiserSlug: donation.fundraiser.slug,
+          currentAmount: updatedFundraiser.currentAmount,
+          isAnonymous: donation.isAnonymous,
+        }).catch(e => this.logger.error(`Email new donation notification failed: ${e.message}`));
+      }
+
       this.logger.log(`Donation ${donationId} completed, amount: ${donation.amount}`);
     } else if (type === 'plan') {
       const fundraiserId = metadata.fundraiser_id;
@@ -222,6 +249,11 @@ export class StripeWebhookController {
     const donationId = paymentIntent.metadata?.donation_id;
     if (!donationId) return;
 
+    const donation = await this.prisma.donation.findUnique({
+      where: { id: donationId },
+      include: { fundraiser: true },
+    });
+
     await this.prisma.donation.update({
       where: { id: donationId },
       data: { status: DonationStatus.FAILED },
@@ -230,6 +262,16 @@ export class StripeWebhookController {
     await this.audit.log(null, 'donation.failed', 'Donation', donationId, {
       reason: paymentIntent.last_payment_error?.message,
     });
+
+    if (donation) {
+      this.email.sendDonationFailed({
+        donorEmail: donation.donorEmail,
+        donorName: donation.donorName,
+        amount: donation.amount,
+        fundraiserTitle: donation.fundraiser.title,
+        fundraiserSlug: donation.fundraiser.slug,
+      }).catch(e => this.logger.error(`Email donation failed notification: ${e.message}`));
+    }
 
     this.logger.log(`Donation ${donationId} payment failed`);
   }
@@ -246,6 +288,7 @@ export class StripeWebhookController {
 
     const donation = await this.prisma.donation.findFirst({
       where: { stripePaymentIntentId: paymentIntentId },
+      include: { fundraiser: true },
     });
 
     if (!donation || donation.status === DonationStatus.REFUNDED) return;
@@ -273,6 +316,13 @@ export class StripeWebhookController {
     await this.audit.log(null, 'donation.refunded', 'Donation', donation.id, {
       amount: donation.amount,
     });
+
+    this.email.sendRefundConfirmation({
+      donorEmail: donation.donorEmail,
+      donorName: donation.donorName,
+      amount: donation.amount,
+      fundraiserTitle: donation.fundraiser.title,
+    }).catch(e => this.logger.error(`Email refund confirmation failed: ${e.message}`));
 
     this.logger.log(`Donation ${donation.id} refunded, amount: ${donation.amount}`);
   }

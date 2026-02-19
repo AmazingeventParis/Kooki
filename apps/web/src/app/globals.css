@@ -1,0 +1,261 @@
+@import "tailwindcss";
+
+@theme {
+  /* Kooki Brand Colors */
+  --color-kooki-50: #fff1f3;
+  --color-kooki-100: #ffe0e5;
+  --color-kooki-200: #ffc7d0;
+  --color-kooki-300: #ffa0b0;
+  --color-kooki-400: #ff6d85;
+  --color-kooki-500: #FF4D6A;
+  --color-kooki-600: #e8234a;
+  --color-kooki-700: #c4183d;
+
+  /* Ocean / Teal */
+  --color-ocean-400: #4dd8ca;
+  --color-ocean-500: #2EC4B6;
+  --color-ocean-600: #25a89c;
+
+  /* Sun / Yellow */
+  --color-sun-400: #fad23e;
+  --color-sun-500: #F9C80E;
+
+  /* Grape / Purple */
+  --color-grape-500: #7B2FF7;
+  --color-grape-600: #6520d9;
+
+  /* Fonts */
+  --font-heading: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+/* ===== Global Styles ===== */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
+/* ===== Gradient Utilities ===== */
+
+.gradient-hero {
+  background: linear-gradient(135deg, #FF4D6A 0%, #7B2FF7 50%, #2EC4B6 100%);
+}
+
+.gradient-hero-animated {
+  background: linear-gradient(135deg, #FF4D6A 0%, #7B2FF7 50%, #2EC4B6 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+}
+
+.gradient-cta {
+  background: linear-gradient(135deg, #FF4D6A 0%, #7B2FF7 100%);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #FF4D6A 0%, #7B2FF7 50%, #2EC4B6 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientTextShift 4s ease infinite;
+}
+
+.gradient-text-static {
+  background: linear-gradient(135deg, #FF4D6A 0%, #7B2FF7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ===== Animations ===== */
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes gradientTextShift {
+  0% { background-position: 0% center; }
+  50% { background-position: 200% center; }
+  100% { background-position: 0% center; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-30px) rotate(5deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(255, 77, 106, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(255, 77, 106, 0.6); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ===== Card Animations ===== */
+
+.card-float {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-float:hover {
+  transform: translateY(-8px);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.08),
+    0 8px 16px rgba(255, 77, 106, 0.1);
+}
+
+.card-gradient-border {
+  position: relative;
+  background: white;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.card-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #FF4D6A, #7B2FF7, #2EC4B6);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card-gradient-border:hover::before {
+  opacity: 1;
+}
+
+/* ===== Progress Bar ===== */
+
+.progress-fill {
+  background: linear-gradient(90deg, #FF4D6A, #F9C80E);
+  border-radius: 9999px;
+  transition: width 1s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+/* ===== Decorative blobs ===== */
+
+.blob {
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.3;
+  position: absolute;
+  pointer-events: none;
+}
+
+.blob-coral {
+  background: #FF4D6A;
+}
+
+.blob-purple {
+  background: #7B2FF7;
+}
+
+.blob-teal {
+  background: #2EC4B6;
+}
+
+.blob-yellow {
+  background: #F9C80E;
+}
+
+/* ===== Scrollbar ===== */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f8f8f8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #FF4D6A, #7B2FF7);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #e8234a, #6520d9);
+}
+
+/* ===== Selection ===== */
+
+::selection {
+  background: rgba(255, 77, 106, 0.2);
+  color: #1a1a2e;
+}

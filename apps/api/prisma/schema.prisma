@@ -1,0 +1,216 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PERSONAL
+  ORG_ADMIN
+  ADMIN
+}
+
+enum FundraiserType {
+  PERSONAL
+  ASSOCIATION
+}
+
+enum FundraiserStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+  COMPLETED
+}
+
+enum DonationStatus {
+  PENDING
+  COMPLETED
+  REFUNDED
+  FAILED
+  DISPUTED
+}
+
+enum TipStatus {
+  PENDING
+  COMPLETED
+  REFUNDED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum TaxReceiptStatus {
+  PENDING
+  GENERATED
+  SENT
+  CANCELLED
+}
+
+model User {
+  id               String   @id @default(uuid()) @db.Uuid
+  email            String   @unique
+  passwordHash     String   @map("password_hash")
+  firstName        String?  @map("first_name")
+  lastName         String?  @map("last_name")
+  role             UserRole @default(PERSONAL)
+  avatarUrl        String?  @map("avatar_url")
+  stripeCustomerId String?  @map("stripe_customer_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organizations Organization[]
+  fundraisers   Fundraiser[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Organization {
+  id                  String   @id @default(uuid()) @db.Uuid
+  ownerUserId         String   @map("owner_user_id") @db.Uuid
+  legalName           String   @map("legal_name")
+  email               String
+  siret               String?
+  address             String?
+  stripeAccountId     String?  @map("stripe_account_id")
+  isTaxEligible       Boolean  @default(false) @map("is_tax_eligible")
+  taxAttestationUrl   String?  @map("tax_attestation_url")
+  isOnboarded         Boolean  @default(false) @map("is_onboarded")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  owner           User             @relation(fields: [ownerUserId], references: [id])
+  fundraisers     Fundraiser[]
+  taxReceipts     TaxReceipt[]
+  receiptCounters ReceiptCounter[]
+
+  @@map("organizations")
+}
+
+model Fundraiser {
+  id               String           @id @default(uuid()) @db.Uuid
+  type             FundraiserType
+  ownerUserId      String           @map("owner_user_id") @db.Uuid
+  organizationId   String?          @map("organization_id") @db.Uuid
+  title            String
+  description      String
+  slug             String           @unique
+  currency         String           @default("EUR")
+  planCode         String           @map("plan_code")
+  maxAmount        Int              @map("max_amount")
+  currentAmount    Int              @default(0) @map("current_amount")
+  status           FundraiserStatus @default(DRAFT)
+  coverImageUrl    String?          @map("cover_image_url")
+  openingFeePaid   Boolean          @default(false) @map("opening_fee_paid")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  owner        User          @relation(fields: [ownerUserId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  donations    Donation[]
+  withdrawals  Withdrawal[]
+
+  @@map("fundraisers")
+}
+
+model Donation {
+  id                    String         @id @default(uuid()) @db.Uuid
+  fundraiserId          String         @map("fundraiser_id") @db.Uuid
+  amount                Int
+  currency              String         @default("EUR")
+  donorName             String         @map("donor_name")
+  donorEmail            String         @map("donor_email")
+  donorMessage          String?        @map("donor_message")
+  isAnonymous           Boolean        @default(false) @map("is_anonymous")
+  wantsReceipt          Boolean        @default(false) @map("wants_receipt")
+  donorAddress          String?        @map("donor_address")
+  status                DonationStatus @default(PENDING)
+  stripePaymentIntentId String?        @map("stripe_payment_intent_id")
+  stripeSessionId       String?        @map("stripe_session_id")
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+
+  fundraiser Fundraiser  @relation(fields: [fundraiserId], references: [id])
+  tip        Tip?
+  taxReceipt TaxReceipt?
+
+  @@map("donations")
+}
+
+model Tip {
+  id               String    @id @default(uuid()) @db.Uuid
+  donationId       String    @unique @map("donation_id") @db.Uuid
+  amount           Int
+  strategyVersion  String    @default("v1") @map("strategy_version")
+  status           TipStatus @default(PENDING)
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  donation Donation @relation(fields: [donationId], references: [id])
+
+  @@map("tips")
+}
+
+model Withdrawal {
+  id              String           @id @default(uuid()) @db.Uuid
+  fundraiserId    String           @map("fundraiser_id") @db.Uuid
+  amount          Int
+  status          WithdrawalStatus @default(PENDING)
+  stripeTransferId String?        @map("stripe_transfer_id")
+  stripePayoutId  String?          @map("stripe_payout_id")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  fundraiser Fundraiser @relation(fields: [fundraiserId], references: [id])
+
+  @@map("withdrawals")
+}
+
+model TaxReceipt {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String           @map("organization_id") @db.Uuid
+  donationId      String           @unique @map("donation_id") @db.Uuid
+  receiptNumber   String           @unique @map("receipt_number")
+  pdfUrl          String?          @map("pdf_url")
+  status          TaxReceiptStatus @default(PENDING)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  donation     Donation     @relation(fields: [donationId], references: [id])
+
+  @@map("tax_receipts")
+}
+
+model ReceiptCounter {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  year           Int
+  counter        Int    @default(0)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, year])
+  @@map("receipt_counters")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  payloadJson String?  @map("payload_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorUserId], references: [id])
+
+  @@map("audit_logs")
+}

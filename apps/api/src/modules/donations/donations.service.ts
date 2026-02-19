@@ -112,6 +112,7 @@ export class DonationsService {
     const checkoutSession = await this.stripe.createDonationCheckout({
       donationId: donation.id,
       fundraiserId: fundraiser.id,
+      fundraiserSlug: fundraiser.slug,
       fundraiserType: fundraiser.type,
       amount,
       tipAmount,

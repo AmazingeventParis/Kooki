@@ -28,6 +28,7 @@ export class StripeService {
   async createDonationCheckout(params: {
     donationId: string;
     fundraiserId: string;
+    fundraiserSlug: string;
     fundraiserType: string;
     amount: number;
     tipAmount: number;
@@ -73,8 +74,8 @@ export class StripeService {
               fundraiser_id: params.fundraiserId,
               type: 'donation',
             },
-            success_url: `${appUrl}/c/${params.fundraiserId}/merci?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${appUrl}/c/${params.fundraiserId}`,
+            success_url: `${appUrl}/c/${params.fundraiserSlug}?merci=true&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${appUrl}/c/${params.fundraiserSlug}`,
           },
           {
             stripeAccount: params.connectedAccountId,

@@ -28,8 +28,8 @@ async function bootstrap() {
   });
 
   const port = configService.get<number>('API_PORT', 4000);
-  await app.listen(port);
-  console.log(`Kooki API running on http://localhost:${port}`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`Kooki API running on http://0.0.0.0:${port}`);
 }
 
 bootstrap();

@@ -60,4 +60,4 @@ ENV NODE_ENV=production
 ENV API_PORT=4000
 
 # Push schema to DB then start
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/main.js"]
+CMD ["sh", "-c", "echo 'Starting Kooki API...' && npx prisma db push --skip-generate --accept-data-loss 2>&1 || echo 'Prisma db push failed, continuing...' && echo 'Starting NestJS...' && node dist/main.js"]

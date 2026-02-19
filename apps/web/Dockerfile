@@ -15,6 +15,14 @@ COPY apps/web/ apps/web/
 # Install all dependencies
 RUN pnpm install --frozen-lockfile
 
+# Accept build-time env vars for Next.js (NEXT_PUBLIC_ vars are inlined at build time)
+ARG NEXT_PUBLIC_API_URL=https://kooki-api.swipego.app/api
+ARG NEXT_PUBLIC_APP_URL=https://kooki.swipego.app
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+
 # Build shared first, then web
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production

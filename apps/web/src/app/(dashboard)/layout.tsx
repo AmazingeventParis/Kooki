@@ -1,17 +1,25 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/sidebar';
 import { useAuth } from '@/lib/auth-context';
 import { Menu, Bell, Search } from 'lucide-react';
-import Link from 'next/link';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const router = useRouter();
+  const { user, isLoading, isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
+  // Redirect to login if not authenticated
+  React.useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isLoading, isAuthenticated, router]);
+
   // Loading state
-  if (isLoading) {
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-4">

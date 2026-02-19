@@ -8,14 +8,13 @@ import {
   Building2,
   ArrowLeft,
   ArrowRight,
-  Upload,
   Check,
   TrendingUp,
   Eye,
   Image,
   Sparkles,
 } from 'lucide-react';
-import { PERSONAL_PLANS, ASSOCIATION_PLANS, type PlanDefinition } from '@kooki/shared';
+import { PERSONAL_PLANS, ASSOCIATION_PLANS } from '@kooki/shared';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input, Textarea } from '@/components/ui/input';
@@ -23,6 +22,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/lib/api-client';
 
 const STEPS = [
   { number: 1, label: 'Type' },
@@ -34,6 +34,8 @@ const STEPS = [
 export default function NewFundraiserPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     type: '' as 'PERSONAL' | 'ASSOCIATION' | '',
     title: '',
@@ -65,10 +67,23 @@ export default function NewFundraiserPage() {
     if (step > 1) setStep(step - 1);
   };
 
-  const handlePublish = () => {
-    // TODO: Call API to create fundraiser
-    console.log('Publish', formData);
-    router.push('/dashboard');
+  const handlePublish = async () => {
+    setIsPublishing(true);
+    setError('');
+    try {
+      const response = await apiClient.post<{ data: { slug: string } }>('/fundraisers', {
+        title: formData.title,
+        description: formData.description,
+        type: formData.type,
+        planCode: formData.planCode,
+        coverImageUrl: formData.coverImageUrl || undefined,
+      });
+      router.push(`/c/${response.data.slug}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de la creation';
+      setError(message);
+      setIsPublishing(false);
+    }
   };
 
   const plans = formData.type === 'ASSOCIATION' ? ASSOCIATION_PLANS : PERSONAL_PLANS;
@@ -88,9 +103,7 @@ export default function NewFundraiserPage() {
       {/* Step indicator */}
       <div className="mb-10">
         <div className="flex items-center justify-between relative">
-          {/* Progress line background */}
           <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200" />
-          {/* Progress line fill */}
           <motion.div
             className="absolute top-5 left-0 h-0.5 gradient-cta"
             animate={{ width: `${((step - 1) / (STEPS.length - 1)) * 100}%` }}
@@ -126,6 +139,13 @@ export default function NewFundraiserPage() {
           ))}
         </div>
       </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="mb-6 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600">
+          {error}
+        </div>
+      )}
 
       {/* Step Content */}
       <AnimatePresence mode="wait">
@@ -431,6 +451,7 @@ export default function NewFundraiserPage() {
             variant="primary"
             size="lg"
             onClick={handlePublish}
+            isLoading={isPublishing}
           >
             <Sparkles size={18} />
             Publier ma cagnotte

@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import Link from 'next/link';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart,
-  Share2,
   Users,
   Clock,
   Copy,
@@ -18,6 +17,7 @@ import {
   ArrowRight,
   Shield,
   Lock,
+  Loader2,
 } from 'lucide-react';
 import { tipSuggestion, formatCurrency, progressPercent } from '@kooki/shared';
 import { Button } from '@/components/ui/button';
@@ -28,59 +28,52 @@ import { Card } from '@/components/ui/card';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/lib/api-client';
 
-// TODO: Replace with API call using slug param
-const MOCK_FUNDRAISER = {
-  id: 'f1',
-  title: 'Aide pour la reconstruction du refuge animal de Nantes',
-  slug: 'refuge-animal',
-  description: `
-Le refuge animal de Nantes a subi de graves dommages suite aux intemperies de janvier dernier.
-Les batiments principaux sont endommages et les animaux ont besoin d'un nouvel espace securise.
-
-## Notre objectif
-
-Nous souhaitons collecter des fonds pour :
-- **Reparer les batiments** endommages par les inondations
-- **Construire de nouveaux enclos** adaptes pour les animaux
-- **Acheter du materiel veterinaire** de premiere urgence
-- **Couvrir les frais de nourriture** pour les 3 prochains mois
-
-## Pourquoi nous avons besoin de vous
-
-Le refuge accueille actuellement plus de 150 animaux (chiens, chats, rongeurs, oiseaux) et nos benevoles
-font un travail incroyable au quotidien. Mais sans votre aide financiere, nous ne pourrons pas continuer.
-
-Chaque don compte, meme le plus petit. Partagez cette cagnotte autour de vous pour nous aider !
-
-Merci du fond du coeur pour votre generosite. 🐾
-  `.trim(),
-  coverImageUrl: '',
-  currentAmount: 845000,
-  maxAmount: 1200000,
-  donationCount: 234,
-  status: 'ACTIVE' as const,
-  createdAt: '2025-12-01T10:00:00Z',
+interface Fundraiser {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  coverImageUrl: string | null;
+  currentAmount: number;
+  maxAmount: number;
+  donationCount: number;
+  status: string;
+  type: string;
+  createdAt: string;
   owner: {
-    firstName: 'Marie',
-    lastName: 'Lefevre',
-    avatarUrl: '',
-  },
-};
+    id: string;
+    firstName: string;
+    lastName: string;
+    avatarUrl: string | null;
+  };
+  organization?: {
+    id: string;
+    legalName: string;
+    isTaxEligible: boolean;
+  } | null;
+}
 
-const MOCK_DONATIONS = [
-  { id: 'd1', donorName: 'Pierre M.', amount: 5000, donorMessage: 'Courage, bravo pour ce que vous faites !', createdAt: '2025-12-20T14:30:00Z', isAnonymous: false },
-  { id: 'd2', donorName: 'Anonyme', amount: 10000, donorMessage: '', createdAt: '2025-12-19T09:15:00Z', isAnonymous: true },
-  { id: 'd3', donorName: 'Sophie L.', amount: 2500, donorMessage: 'Pour les petits animaux !', createdAt: '2025-12-18T18:45:00Z', isAnonymous: false },
-  { id: 'd4', donorName: 'Famille Durand', amount: 15000, donorMessage: 'On vous soutient a 100% !', createdAt: '2025-12-17T11:00:00Z', isAnonymous: false },
-  { id: 'd5', donorName: 'Jean-Paul R.', amount: 3000, donorMessage: '', createdAt: '2025-12-16T16:20:00Z', isAnonymous: false },
-];
+interface Donation {
+  id: string;
+  donorName: string;
+  amount: number;
+  donorMessage: string | null;
+  isAnonymous: boolean;
+  createdAt: string;
+}
 
 const PRESET_AMOUNTS = [1000, 2500, 5000, 10000];
 
 export default function FundraiserPage() {
-  const fundraiser = MOCK_FUNDRAISER;
-  const percent = progressPercent(fundraiser.currentAmount, fundraiser.maxAmount);
+  const params = useParams();
+  const slug = params.slug as string;
+
+  const [fundraiser, setFundraiser] = useState<Fundraiser | null>(null);
+  const [donations, setDonations] = useState<Donation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const [selectedAmount, setSelectedAmount] = useState(2500);
   const [customAmount, setCustomAmount] = useState('');
@@ -92,6 +85,30 @@ export default function FundraiserPage() {
   const [showAllDonations, setShowAllDonations] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showMobileDonate, setShowMobileDonate] = useState(false);
+  const [isDonating, setIsDonating] = useState(false);
+  const [donationError, setDonationError] = useState('');
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await apiClient.get<{ data: Fundraiser }>(`/fundraisers/${slug}`);
+        setFundraiser(res.data);
+
+        // Fetch donations
+        try {
+          const donRes = await apiClient.get<{ data: Donation[] }>(`/fundraisers/${res.data.id}/donations`);
+          setDonations(donRes.data);
+        } catch {
+          // No donations yet
+        }
+      } catch {
+        setError('Cagnotte non trouvee');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [slug]);
 
   const activeAmount = isCustom ? (parseInt(customAmount) || 0) * 100 : selectedAmount;
   const tipAmount = useMemo(() => (includeTip ? tipSuggestion(activeAmount) : 0), [activeAmount, includeTip]);
@@ -103,11 +120,60 @@ export default function FundraiserPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDonate = (e: React.FormEvent) => {
+  const handleDonate = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Call API to create donation checkout
-    console.log('Donate', { amount: activeAmount, tipAmount, donorName, donorEmail, donorMessage });
+    if (!fundraiser || activeAmount < 100) return;
+
+    setIsDonating(true);
+    setDonationError('');
+
+    try {
+      const res = await apiClient.post<{ data: { url: string } }>('/donations/checkout', {
+        fundraiserId: fundraiser.id,
+        amount: activeAmount,
+        tipAmount: includeTip ? tipAmount : 0,
+        donorName,
+        donorEmail,
+        donorMessage: donorMessage || undefined,
+        isAnonymous: false,
+        wantsReceipt: false,
+      });
+
+      // Redirect to Stripe Checkout
+      if (res.data.url) {
+        window.location.href = res.data.url;
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de la creation du paiement';
+      setDonationError(message);
+      setIsDonating(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex items-center justify-center h-96 mt-20">
+          <Loader2 size={40} className="animate-spin text-kooki-500" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !fundraiser) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex flex-col items-center justify-center h-96 mt-20">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Cagnotte non trouvee</h1>
+          <p className="text-gray-500">Cette cagnotte n&apos;existe pas ou a ete supprimee.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const percent = progressPercent(fundraiser.currentAmount, fundraiser.maxAmount);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -131,7 +197,7 @@ export default function FundraiserPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <Badge variant="success" size="md" className="mb-3">
-                    Cagnotte active
+                    {fundraiser.status === 'ACTIVE' ? 'Cagnotte active' : fundraiser.status}
                   </Badge>
                   <h1 className="text-2xl sm:text-3xl font-extrabold font-[family-name:var(--font-heading)] text-gray-900 leading-tight">
                     {fundraiser.title}
@@ -255,43 +321,50 @@ export default function FundraiserPage() {
                 <Badge variant="default">{fundraiser.donationCount} dons</Badge>
               </div>
 
-              <div className="space-y-1">
-                {(showAllDonations ? MOCK_DONATIONS : MOCK_DONATIONS.slice(0, 3)).map(
-                  (donation) => (
-                    <div
-                      key={donation.id}
-                      className="flex items-start gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-kooki-100 to-grape-500/10 flex items-center justify-center text-sm font-bold text-kooki-600 shrink-0">
-                        {donation.isAnonymous ? '?' : donation.donorName[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-sm text-gray-900">
-                            {donation.donorName}
-                          </span>
-                          <span className="font-bold text-sm text-kooki-500">
-                            {formatCurrency(donation.amount)}
-                          </span>
+              {donations.length === 0 ? (
+                <div className="text-center py-8">
+                  <Heart size={32} className="text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-400 text-sm">Soyez le premier a donner !</p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {(showAllDonations ? donations : donations.slice(0, 3)).map(
+                    (donation) => (
+                      <div
+                        key={donation.id}
+                        className="flex items-start gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-kooki-100 to-grape-500/10 flex items-center justify-center text-sm font-bold text-kooki-600 shrink-0">
+                          {donation.isAnonymous ? '?' : donation.donorName[0]}
                         </div>
-                        {donation.donorMessage && (
-                          <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">
-                            {donation.donorMessage}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-sm text-gray-900">
+                              {donation.donorName}
+                            </span>
+                            <span className="font-bold text-sm text-kooki-500">
+                              {formatCurrency(donation.amount)}
+                            </span>
+                          </div>
+                          {donation.donorMessage && (
+                            <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">
+                              {donation.donorMessage}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {new Date(donation.createdAt).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'short',
+                            })}
                           </p>
-                        )}
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {new Date(donation.createdAt).toLocaleDateString('fr-FR', {
-                            day: 'numeric',
-                            month: 'short',
-                          })}
-                        </p>
+                        </div>
                       </div>
-                    </div>
-                  )
-                )}
-              </div>
+                    )
+                  )}
+                </div>
+              )}
 
-              {MOCK_DONATIONS.length > 3 && (
+              {donations.length > 3 && (
                 <button
                   onClick={() => setShowAllDonations(!showAllDonations)}
                   className="w-full mt-3 py-2 text-sm font-medium text-kooki-500 hover:text-kooki-600 flex items-center justify-center gap-1 cursor-pointer"
@@ -338,6 +411,8 @@ export default function FundraiserPage() {
                 donorMessage={donorMessage}
                 setDonorMessage={setDonorMessage}
                 onSubmit={handleDonate}
+                isDonating={isDonating}
+                donationError={donationError}
               />
             </div>
           </div>
@@ -402,6 +477,8 @@ export default function FundraiserPage() {
                   donorMessage={donorMessage}
                   setDonorMessage={setDonorMessage}
                   onSubmit={handleDonate}
+                  isDonating={isDonating}
+                  donationError={donationError}
                 />
               </div>
             </motion.div>
@@ -436,6 +513,8 @@ interface DonationFormProps {
   donorMessage: string;
   setDonorMessage: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
+  isDonating: boolean;
+  donationError: string;
 }
 
 function DonationForm({
@@ -457,6 +536,8 @@ function DonationForm({
   donorMessage,
   setDonorMessage,
   onSubmit,
+  isDonating,
+  donationError,
 }: DonationFormProps) {
   return (
     <Card padding="lg" className="shadow-lg border-0">
@@ -465,6 +546,12 @@ function DonationForm({
       </h2>
 
       <form onSubmit={onSubmit} className="space-y-5">
+        {donationError && (
+          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600">
+            {donationError}
+          </div>
+        )}
+
         {/* Preset amounts */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -583,10 +670,11 @@ function DonationForm({
           variant="primary"
           size="xl"
           className="w-full"
-          disabled={activeAmount < 100}
+          disabled={activeAmount < 100 || isDonating}
+          isLoading={isDonating}
         >
           Donner {activeAmount >= 100 ? formatCurrency(totalAmount) : ''}
-          <ArrowRight size={20} />
+          {!isDonating && <ArrowRight size={20} />}
         </Button>
 
         {/* Security badges */}

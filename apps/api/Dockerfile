@@ -59,5 +59,5 @@ EXPOSE 4000
 ENV NODE_ENV=production
 ENV API_PORT=4000
 
-# Run migrations then start (needs write access to prisma dir)
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+# Push schema to DB then start
+CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/main.js"]

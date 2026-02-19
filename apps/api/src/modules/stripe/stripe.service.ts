@@ -118,8 +118,8 @@ export class StripeService {
             fundraiser_id: params.fundraiserId,
             type: 'donation',
           },
-          success_url: `${appUrl}/c/${params.fundraiserId}/merci?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${appUrl}/c/${params.fundraiserId}`,
+          success_url: `${appUrl}/c/${params.fundraiserSlug}?merci=true&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${appUrl}/c/${params.fundraiserSlug}`,
         });
 
         return {

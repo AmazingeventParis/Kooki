@@ -40,4 +40,17 @@ export class DonationsController {
     );
     return result;
   }
+
+  /**
+   * Reconcile PENDING donations by checking Stripe session status.
+   * Admin endpoint to fix missed webhooks.
+   */
+  @Post('admin/reconcile-donations')
+  async reconcileDonations() {
+    const result = await this.donationsService.reconcilePendingDonations();
+    return {
+      data: result,
+      message: `${result.reconciled} donation(s) reconciliee(s)`,
+    };
+  }
 }

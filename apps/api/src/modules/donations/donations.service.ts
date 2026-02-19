@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StripeService } from '../stripe/stripe.service';
@@ -11,6 +12,8 @@ import { DonationStatus, FundraiserStatus } from '@prisma/client';
 
 @Injectable()
 export class DonationsService {
+  private readonly logger = new Logger(DonationsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly stripe: StripeService,
@@ -196,5 +199,64 @@ export class DonationsService {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     };
+  }
+
+  /**
+   * Reconcile PENDING donations by checking their Stripe session status.
+   * Marks paid donations as COMPLETED and updates fundraiser amounts.
+   */
+  async reconcilePendingDonations(): Promise<{ reconciled: number; errors: string[] }> {
+    const pendingDonations = await this.prisma.donation.findMany({
+      where: {
+        status: DonationStatus.PENDING,
+        stripeSessionId: { not: null },
+      },
+    });
+
+    let reconciled = 0;
+    const errors: string[] = [];
+
+    for (const donation of pendingDonations) {
+      try {
+        const session = await this.stripe.retrieveCheckoutSession(donation.stripeSessionId!);
+
+        if (session.payment_status === 'paid') {
+          await this.prisma.donation.update({
+            where: { id: donation.id },
+            data: {
+              status: DonationStatus.COMPLETED,
+              stripePaymentIntentId: typeof session.payment_intent === 'string'
+                ? session.payment_intent
+                : (session.payment_intent as any)?.id || null,
+            },
+          });
+
+          await this.prisma.tip.updateMany({
+            where: { donationId: donation.id },
+            data: { status: 'COMPLETED' },
+          });
+
+          await this.prisma.fundraiser.update({
+            where: { id: donation.fundraiserId },
+            data: {
+              currentAmount: { increment: donation.amount },
+            },
+          });
+
+          await this.audit.log(null, 'donation.reconciled', 'Donation', donation.id, {
+            amount: donation.amount,
+            fundraiserId: donation.fundraiserId,
+          });
+
+          this.logger.log(`Reconciled donation ${donation.id} (${donation.amount} cents)`);
+          reconciled++;
+        }
+      } catch (error: any) {
+        errors.push(`${donation.id}: ${error.message}`);
+        this.logger.error(`Failed to reconcile donation ${donation.id}: ${error.message}`);
+      }
+    }
+
+    return { reconciled, errors };
   }
 }

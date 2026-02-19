@@ -136,6 +136,6 @@ export const ASSOCIATION_PLANS: Record<string, PlanDefinition> = {
 };
 
 export function getPlanByCode(code: string): PlanDefinition | undefined {
-  const all = { ...PERSONAL_PLANS, ...ASSOCIATION_PLANS };
-  return Object.values(all).find((p) => p.code === code);
+  const all = [...Object.values(PERSONAL_PLANS), ...Object.values(ASSOCIATION_PLANS)];
+  return all.find((p) => p.code === code);
 }

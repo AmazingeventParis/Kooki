@@ -57,7 +57,7 @@ export class AuthService {
     // Send welcome email (non-blocking)
     this.email.sendWelcome({
       email: user.email,
-      firstName: user.firstName,
+      firstName: user.firstName || 'Utilisateur',
     }).catch(() => {}); // Silent fail
 
     return {

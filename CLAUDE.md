@@ -17,9 +17,10 @@
   - URL interne : `redis://default:KookiRedis2026Secure@q4g0ggksw8wkwws08gk8o4kw:6379/0`
   - Image : redis:7-alpine
 
-### Applications Coolify (a creer)
-- **kooki-api** : FQDN `https://kooki-api.swipego.app`, port 4000
-- **kooki-web** : FQDN `https://kooki.swipego.app`, port 3000
+### Applications Coolify
+- **kooki-api** : UUID `f0w44gg0skgcso04o0osg8kw`, FQDN `https://kooki-api.swipego.app`, port 4000
+- **kooki-web** : UUID `dw048cwkk8swkk8ckwcg4k0w`, FQDN `https://kooki.swipego.app`, port 3000
+- **Deploy API** : `GET http://217.182.89.133:8000/api/v1/deploy?uuid=<app-uuid>&force=true`
 
 ### Repo GitHub
 - https://github.com/AmazingeventParis/Kooki

@@ -54,13 +54,10 @@ COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 # Set working directory to the api app
 WORKDIR /app/apps/api
 
-# Switch to non-root user
-USER nestjs
-
 EXPOSE 4000
 
 ENV NODE_ENV=production
 ENV API_PORT=4000
 
-# Run migrations then start
+# Run migrations then start (needs write access to prisma dir)
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]

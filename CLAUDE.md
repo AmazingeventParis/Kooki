@@ -1,3 +1,5 @@
+> **IMPORTANT** : Lis `project-state.md` au demarrage pour comprendre l'etat complet du projet.
+
 # Kooki - Plateforme de cagnottes 0% commission
 
 ## Infrastructure

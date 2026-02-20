@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart,
@@ -18,6 +18,9 @@ import {
   Shield,
   Lock,
   Loader2,
+  PartyPopper,
+  Share2,
+  ArrowLeft,
 } from 'lucide-react';
 import { tipSuggestion, formatCurrency, progressPercent } from '@kooki/shared';
 import { Button } from '@/components/ui/button';
@@ -67,8 +70,25 @@ interface Donation {
 const PRESET_AMOUNTS = [1000, 2500, 5000, 10000];
 
 export default function FundraiserPage() {
+  return (
+    <React.Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex items-center justify-center h-96 mt-20">
+          <Loader2 size={40} className="animate-spin text-kooki-500" />
+        </div>
+      </div>
+    }>
+      <FundraiserPageContent />
+    </React.Suspense>
+  );
+}
+
+function FundraiserPageContent() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const slug = params.slug as string;
+  const isMerci = searchParams.get('merci') === 'true';
 
   const [fundraiser, setFundraiser] = useState<Fundraiser | null>(null);
   const [donations, setDonations] = useState<Donation[]>([]);
@@ -115,7 +135,8 @@ export default function FundraiserPage() {
   const totalAmount = activeAmount + tipAmount;
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
+    const cleanUrl = `${window.location.origin}/c/${slug}`;
+    navigator.clipboard.writeText(cleanUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -174,6 +195,169 @@ export default function FundraiserPage() {
   }
 
   const percent = progressPercent(fundraiser.currentAmount, fundraiser.maxAmount);
+
+  // --- Thank You Screen ---
+  if (isMerci) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-28 pb-20">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            {/* Success icon */}
+            <div className="flex justify-center mb-6">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', damping: 12, stiffness: 200, delay: 0.2 }}
+                className="w-24 h-24 rounded-full gradient-cta flex items-center justify-center shadow-lg"
+              >
+                <PartyPopper size={48} className="text-white" />
+              </motion.div>
+            </div>
+
+            {/* Main message */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-center mb-8"
+            >
+              <h1 className="text-3xl sm:text-4xl font-extrabold font-[family-name:var(--font-heading)] text-gray-900 mb-3">
+                Merci pour votre don !
+              </h1>
+              <p className="text-lg text-gray-500">
+                Votre generosit&eacute; fait la diff&eacute;rence.
+              </p>
+            </motion.div>
+
+            {/* Fundraiser recap card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <Card padding="lg" className="shadow-lg border-0 mb-6">
+                <div className="text-center mb-4">
+                  <Badge variant="success" size="md">Don confirme</Badge>
+                </div>
+
+                <h2 className="text-xl font-bold font-[family-name:var(--font-heading)] text-gray-900 text-center mb-2">
+                  {fundraiser.title}
+                </h2>
+
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  <div className="w-8 h-8 rounded-full gradient-cta flex items-center justify-center text-white text-xs font-bold">
+                    {fundraiser.owner.firstName[0]}
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    par {fundraiser.owner.firstName} {fundraiser.owner.lastName}
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <Progress value={percent} size="lg" />
+                <div className="flex items-center justify-between mt-3 mb-1">
+                  <div>
+                    <span className="text-2xl font-extrabold text-gray-900">
+                      {formatCurrency(fundraiser.currentAmount)}
+                    </span>
+                    <span className="text-sm text-gray-400 ml-2">
+                      sur {formatCurrency(fundraiser.maxAmount)}
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-kooki-500">{percent}%</span>
+                </div>
+                <p className="text-sm text-gray-500 flex items-center gap-1.5">
+                  <Users size={14} />
+                  {fundraiser.donationCount} donateurs
+                </p>
+
+                {/* Confirmation email notice */}
+                <div className="mt-6 p-4 rounded-xl bg-ocean-500/5 border border-ocean-500/20">
+                  <p className="text-sm text-gray-600 text-center">
+                    Un email de confirmation vous a ete envoye.
+                  </p>
+                </div>
+              </Card>
+            </motion.div>
+
+            {/* Share section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              <Card padding="lg" className="shadow-sm mb-6">
+                <div className="text-center mb-4">
+                  <Share2 size={20} className="text-kooki-500 mx-auto mb-2" />
+                  <h3 className="text-base font-bold text-gray-900">
+                    Partagez cette cagnotte
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Aidez a atteindre l&apos;objectif en partageant !
+                  </p>
+                </div>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <button
+                    onClick={handleCopyLink}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors cursor-pointer"
+                  >
+                    {copied ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                    {copied ? 'Copie !' : 'Copier le lien'}
+                  </button>
+                  <button
+                    onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.origin + '/c/' + slug)}`, '_blank')}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1877F2]/10 text-[#1877F2] text-sm font-medium hover:bg-[#1877F2]/20 transition-colors cursor-pointer"
+                  >
+                    <Facebook size={16} />
+                    Facebook
+                  </button>
+                  <button
+                    onClick={() => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent('Je viens de soutenir "' + fundraiser.title + '" sur Kooki !')}&url=${encodeURIComponent(window.location.origin + '/c/' + slug)}`, '_blank')}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1DA1F2]/10 text-[#1DA1F2] text-sm font-medium hover:bg-[#1DA1F2]/20 transition-colors cursor-pointer"
+                  >
+                    <Twitter size={16} />
+                    Twitter
+                  </button>
+                  <button
+                    onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('Je viens de soutenir "' + fundraiser.title + '" sur Kooki ! ' + window.location.origin + '/c/' + slug)}`, '_blank')}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#25D366]/10 text-[#25D366] text-sm font-medium hover:bg-[#25D366]/20 transition-colors cursor-pointer"
+                  >
+                    <MessageCircle size={16} />
+                    WhatsApp
+                  </button>
+                </div>
+              </Card>
+            </motion.div>
+
+            {/* Back to fundraiser button */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1 }}
+              className="text-center"
+            >
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => window.location.href = `/c/${slug}`}
+              >
+                <ArrowLeft size={18} />
+                Retour a la cagnotte
+              </Button>
+            </motion.div>
+          </motion.div>
+        </div>
+
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

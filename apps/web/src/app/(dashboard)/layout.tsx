@@ -4,6 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/sidebar';
 import { useAuth } from '@/lib/auth-context';
+import { ToastProvider } from '@/components/ui/toast';
 import { Menu, Bell, Search } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -31,6 +32,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
+    <ToastProvider>
     <div className="min-h-screen bg-gray-50 flex">
       {/* Desktop Sidebar */}
       <Sidebar />
@@ -91,5 +93,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
     </div>
+    </ToastProvider>
   );
 }

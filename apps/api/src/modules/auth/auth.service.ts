@@ -179,6 +179,56 @@ export class AuthService {
     return { user: this.sanitizeUser(user), token };
   }
 
+  async updateProfile(userId: string, body: { firstName?: string; lastName?: string }) {
+    const { firstName, lastName } = body;
+
+    if (!firstName && !lastName) {
+      throw new BadRequestException('Aucune donnee a mettre a jour');
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(firstName !== undefined && { firstName }),
+        ...(lastName !== undefined && { lastName }),
+      },
+    });
+
+    return this.sanitizeUser(user);
+  }
+
+  async changePassword(userId: string, body: { currentPassword?: string; newPassword: string }) {
+    const { currentPassword, newPassword } = body;
+
+    if (!newPassword || newPassword.length < 8) {
+      throw new BadRequestException('Le nouveau mot de passe doit faire au moins 8 caracteres');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('Utilisateur non trouve');
+    }
+
+    // If user has a password, verify current password
+    if (user.passwordHash) {
+      if (!currentPassword) {
+        throw new BadRequestException('Le mot de passe actuel est requis');
+      }
+      const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!isValid) {
+        throw new BadRequestException('Mot de passe actuel incorrect');
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { message: 'Mot de passe mis a jour' };
+  }
+
   private generateToken(userId: string, email: string, role: string): string {
     const payload: JwtPayload = {
       sub: userId,

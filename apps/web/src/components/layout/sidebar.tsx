@@ -8,6 +8,7 @@ import {
   Heart,
   Wallet,
   Building2,
+  Settings,
   Plus,
   LogOut,
 } from 'lucide-react';
@@ -19,6 +20,7 @@ const navItems = [
   { href: '/dashboard', label: 'Mes cagnottes', icon: Heart, matchPrefix: '/fundraisers' },
   { href: '/withdrawals', label: 'Retraits', icon: Wallet },
   { href: '/dashboard', label: 'Organisation', icon: Building2, role: 'ORG_ADMIN' },
+  { href: '/settings', label: 'Parametres', icon: Settings },
 ];
 
 export function Sidebar() {

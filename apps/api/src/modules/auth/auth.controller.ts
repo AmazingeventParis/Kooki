@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, Req, Res } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, UseGuards, Req, Res } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
@@ -37,6 +37,32 @@ export class AuthController {
     const user = await this.authService.getMe(userId);
     return {
       data: user,
+    };
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  async updateProfile(
+    @CurrentUser('id') userId: string,
+    @Body() body: { firstName?: string; lastName?: string },
+  ) {
+    const user = await this.authService.updateProfile(userId, body);
+    return {
+      data: user,
+      message: 'Profil mis a jour',
+    };
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  async changePassword(
+    @CurrentUser('id') userId: string,
+    @Body() body: { currentPassword?: string; newPassword: string },
+  ) {
+    const result = await this.authService.changePassword(userId, body);
+    return {
+      data: result,
+      message: 'Mot de passe mis a jour',
     };
   }
 

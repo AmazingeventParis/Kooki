@@ -12,11 +12,41 @@ function CallbackHandler() {
     processed.current = true;
 
     const token = searchParams.get('token');
-    if (token) {
-      localStorage.setItem('kooki_token', token);
-      window.location.href = '/dashboard';
-    } else {
+    if (!token) {
       window.location.href = '/login';
+      return;
+    }
+
+    // Store token
+    localStorage.setItem('kooki_token', token);
+
+    // Check for registration context (role + org data from registration flow)
+    const contextRaw = localStorage.getItem('kooki_register_context');
+    if (contextRaw) {
+      localStorage.removeItem('kooki_register_context');
+      try {
+        const context = JSON.parse(contextRaw);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+        fetch(`${apiUrl}/auth/complete-registration`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(context),
+        })
+          .then(() => {
+            window.location.href = '/dashboard';
+          })
+          .catch(() => {
+            // Even if complete-registration fails, redirect to dashboard
+            window.location.href = '/dashboard';
+          });
+      } catch {
+        window.location.href = '/dashboard';
+      }
+    } else {
+      window.location.href = '/dashboard';
     }
   }, [searchParams]);
 

@@ -40,6 +40,25 @@ export class AuthController {
     };
   }
 
+  @Post('complete-registration')
+  @UseGuards(JwtAuthGuard)
+  async completeRegistration(
+    @CurrentUser('id') userId: string,
+    @Body() body: {
+      role?: string;
+      organizationName?: string;
+      organizationSiret?: string;
+      organizationRna?: string;
+      organizationAddress?: string;
+    },
+  ) {
+    const result = await this.authService.completeRegistration(userId, body);
+    return {
+      data: result,
+      message: 'Inscription completee',
+    };
+  }
+
   @Patch('profile')
   @UseGuards(JwtAuthGuard)
   async updateProfile(

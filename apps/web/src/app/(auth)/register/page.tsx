@@ -379,6 +379,17 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => {
+                    // Store registration context before Google redirect
+                    const regContext: Record<string, string> = { role: role || 'PERSONAL' };
+                    if (selectedOrg) {
+                      regContext.organizationName = selectedOrg.nom_complet;
+                      if (selectedOrg.identifiant_association) regContext.organizationRna = selectedOrg.identifiant_association;
+                      if (selectedOrg.siret) regContext.organizationSiret = selectedOrg.siret;
+                      if (selectedOrg.adresse) regContext.organizationAddress = selectedOrg.adresse;
+                    } else if (manualOrgName) {
+                      regContext.organizationName = manualOrgName;
+                    }
+                    localStorage.setItem('kooki_register_context', JSON.stringify(regContext));
                     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
                     window.location.href = `${apiUrl}/auth/google`;
                   }}

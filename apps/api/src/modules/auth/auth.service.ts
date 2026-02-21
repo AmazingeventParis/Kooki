@@ -199,6 +199,50 @@ export class AuthService {
     return { user: this.sanitizeUser(user), token };
   }
 
+  async completeRegistration(userId: string, body: {
+    role?: string;
+    organizationName?: string;
+    organizationSiret?: string;
+    organizationRna?: string;
+    organizationAddress?: string;
+  }) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('Utilisateur non trouve');
+    }
+
+    const role = body.role === 'ORG_ADMIN' ? 'ORG_ADMIN' : 'PERSONAL';
+
+    // Update user role if needed
+    if (user.role !== role) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { role: role as any },
+      });
+    }
+
+    // Create organization if ORG_ADMIN
+    if (role === 'ORG_ADMIN' && body.organizationName) {
+      const existingOrg = await this.prisma.organization.findFirst({
+        where: { ownerUserId: userId },
+      });
+      if (!existingOrg) {
+        await this.prisma.organization.create({
+          data: {
+            ownerUserId: userId,
+            legalName: body.organizationName,
+            email: user.email,
+            siret: body.organizationSiret || null,
+            rnaNumber: body.organizationRna || null,
+            address: body.organizationAddress || null,
+          },
+        });
+      }
+    }
+
+    return { message: 'Inscription completee' };
+  }
+
   async updateProfile(userId: string, body: { firstName?: string; lastName?: string }) {
     const { firstName, lastName } = body;
 

@@ -207,7 +207,7 @@ export default function LandingPage() {
             transition={{ duration: 0.7, delay: 0.3 }}
             className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <Link href="/fundraisers/new">
+            <Link href="/register">
               <Button variant="primary" size="xl" className="text-base">
                 Creer ma cagnotte
                 <ArrowRight size={20} />
@@ -624,7 +624,7 @@ export default function LandingPage() {
                 transition={{ delay: 0.2 }}
                 className="mt-8"
               >
-                <Link href="/fundraisers/new">
+                <Link href="/register">
                   <Button
                     variant="ghost"
                     size="xl"
@@ -733,7 +733,7 @@ function PricingCard({ plan, index }: { plan: PlanDefinition; index: number }) {
         </div>
 
         <div className="mt-8">
-          <Link href="/fundraisers/new">
+          <Link href="/register">
             <Button
               variant={isPopular ? 'primary' : 'secondary'}
               size="lg"

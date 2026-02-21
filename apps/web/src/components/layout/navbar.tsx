@@ -127,7 +127,7 @@ export function Navbar() {
                       Connexion
                     </Button>
                   </Link>
-                  <Link href="/fundraisers/new">
+                  <Link href="/register">
                     <Button variant="primary" size="sm">
                       Creer ma cagnotte
                     </Button>
@@ -217,7 +217,7 @@ export function Navbar() {
                         Connexion
                       </Button>
                     </Link>
-                    <Link href="/fundraisers/new" onClick={() => setIsMobileOpen(false)}>
+                    <Link href="/register" onClick={() => setIsMobileOpen(false)}>
                       <Button variant="primary" size="lg" className="w-full">
                         Creer ma cagnotte
                       </Button>

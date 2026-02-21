@@ -9,7 +9,7 @@ const footerLinks = {
     { label: 'Comment ca marche', href: '/#comment-ca-marche' },
     { label: 'Tarifs', href: '/#tarifs' },
     { label: 'Decouvrir', href: '/#decouvrir' },
-    { label: 'Creer une cagnotte', href: '/fundraisers/new' },
+    { label: 'Creer une cagnotte', href: '/register' },
   ],
   legal: [
     { label: 'Mentions legales', href: '/legal' },

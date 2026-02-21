@@ -80,6 +80,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     firstName?: string;
     lastName?: string;
     role?: string;
+    organizationName?: string;
+    organizationSiret?: string;
+    organizationRna?: string;
+    organizationAddress?: string;
   }) => {
     const response = await apiClient.post<{ data: { token: string; user: User } }>('/auth/register', data);
     const { token, user } = response.data;

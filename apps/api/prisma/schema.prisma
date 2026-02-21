@@ -80,6 +80,7 @@ model Organization {
   legalName           String   @map("legal_name")
   email               String
   siret               String?
+  rnaNumber           String?  @map("rna_number")
   address             String?
   stripeAccountId     String?  @map("stripe_account_id")
   isTaxEligible       Boolean  @default(false) @map("is_tax_eligible")

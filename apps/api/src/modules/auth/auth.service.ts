@@ -30,7 +30,7 @@ export class AuthService {
       throw new BadRequestException(parsed.error.errors.map((e) => e.message).join(', '));
     }
 
-    const { email, password, firstName, lastName } = parsed.data;
+    const { email, password, firstName, lastName, role, organizationName, organizationSiret, organizationRna, organizationAddress } = parsed.data;
 
     // Check if email already exists
     const existing = await this.prisma.user.findUnique({ where: { email } });
@@ -38,18 +38,38 @@ export class AuthService {
       throw new ConflictException('Un compte avec cet email existe deja');
     }
 
+    // Validate organization data for ORG_ADMIN
+    if (role === 'ORG_ADMIN' && !organizationName) {
+      throw new BadRequestException('Le nom de l\'association est requis');
+    }
+
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create user
+    // Create user with role
     const user = await this.prisma.user.create({
       data: {
         email,
         passwordHash,
         firstName,
         lastName,
+        role: role || 'PERSONAL',
       },
     });
+
+    // Create organization if ORG_ADMIN
+    if (role === 'ORG_ADMIN' && organizationName) {
+      await this.prisma.organization.create({
+        data: {
+          ownerUserId: user.id,
+          legalName: organizationName,
+          email,
+          siret: organizationSiret || null,
+          rnaNumber: organizationRna || null,
+          address: organizationAddress || null,
+        },
+      });
+    }
 
     // Generate token
     const token = this.generateToken(user.id, user.email, user.role);

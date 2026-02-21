@@ -5,6 +5,11 @@ export const registerSchema = z.object({
   password: z.string().min(8, 'Minimum 8 caracteres'),
   firstName: z.string().min(2, 'Minimum 2 caracteres').optional(),
   lastName: z.string().min(2, 'Minimum 2 caracteres').optional(),
+  role: z.enum(['PERSONAL', 'ORG_ADMIN']).default('PERSONAL'),
+  organizationName: z.string().min(2, 'Minimum 2 caracteres').optional(),
+  organizationSiret: z.string().optional(),
+  organizationRna: z.string().optional(),
+  organizationAddress: z.string().optional(),
 });
 
 export const loginSchema = z.object({

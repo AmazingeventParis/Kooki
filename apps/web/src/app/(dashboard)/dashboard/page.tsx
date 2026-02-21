@@ -169,8 +169,8 @@ export default function DashboardPage() {
                   <h3 className="text-sm font-semibold text-gray-900 line-clamp-1 group-hover:text-kooki-600 transition-colors">
                     {f.title}
                   </h3>
-                  <Badge variant={f.status === 'ACTIVE' ? 'success' : f.status === 'DRAFT' ? 'default' : 'warning'} size="sm">
-                    {f.status === 'ACTIVE' ? 'Active' : f.status === 'DRAFT' ? 'Brouillon' : f.status === 'PAUSED' ? 'Pause' : f.status}
+                  <Badge variant={f.status === 'ACTIVE' ? 'success' : f.status === 'CLOSED' ? 'error' : f.status === 'DRAFT' ? 'default' : 'warning'} size="sm">
+                    {f.status === 'ACTIVE' ? 'Active' : f.status === 'DRAFT' ? 'Brouillon' : f.status === 'PAUSED' ? 'En pause' : f.status === 'CLOSED' ? 'Cloturee' : f.status}
                   </Badge>
                 </div>
                 <Progress

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
@@ -8,10 +8,13 @@ function CallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setTokenFromOAuth } = useAuth();
+  const processed = useRef(false);
 
   useEffect(() => {
+    if (processed.current) return;
     const token = searchParams.get('token');
     if (token) {
+      processed.current = true;
       setTokenFromOAuth(token);
       router.replace('/dashboard');
     } else {

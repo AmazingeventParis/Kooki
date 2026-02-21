@@ -106,11 +106,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetchUser();
   };
 
-  const setTokenFromOAuth = (token: string) => {
+  const setTokenFromOAuth = useCallback((token: string) => {
     apiClient.setToken(token);
     setState((prev) => ({ ...prev, token }));
     fetchUser();
-  };
+  }, [fetchUser]);
 
   return (
     <AuthContext.Provider value={{ ...state, login, register, logout, refreshUser, setTokenFromOAuth }}>

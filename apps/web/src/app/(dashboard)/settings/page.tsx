@@ -25,8 +25,7 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  const hasPassword = !user?.googleId || (user as any)?.hasPassword;
-  const isGoogleOnly = !!user?.googleId;
+  const hasPassword = !!(user as any)?.hasPassword;
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +100,7 @@ export default function SettingsPage() {
           <Input
             value={user?.email || ''}
             disabled
-            hint={isGoogleOnly ? 'Connecte via Google' : undefined}
+            hint={!hasPassword ? 'Connecte via Google' : undefined}
           />
         </Card>
       </motion.div>
@@ -161,16 +160,16 @@ export default function SettingsPage() {
               <Lock size={16} className="text-white" />
             </div>
             <h2 className="text-lg font-bold font-[family-name:var(--font-heading)] text-gray-900">
-              {isGoogleOnly ? 'Definir un mot de passe' : 'Changer le mot de passe'}
+              {!hasPassword ? 'Definir un mot de passe' : 'Changer le mot de passe'}
             </h2>
           </div>
-          {isGoogleOnly && (
+          {!hasPassword && (
             <p className="text-sm text-gray-500 mb-4">
               Vous etes connecte via Google. Vous pouvez definir un mot de passe pour aussi vous connecter par email.
             </p>
           )}
           <form onSubmit={handleChangePassword} className="space-y-4">
-            {!isGoogleOnly && (
+            {!!hasPassword && (
               <Input
                 label="Mot de passe actuel"
                 type="password"
@@ -200,7 +199,7 @@ export default function SettingsPage() {
               isLoading={passwordLoading}
             >
               <Lock size={16} />
-              {isGoogleOnly ? 'Definir le mot de passe' : 'Changer le mot de passe'}
+              {!hasPassword ? 'Definir le mot de passe' : 'Changer le mot de passe'}
             </Button>
           </form>
         </Card>

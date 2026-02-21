@@ -240,6 +240,9 @@ export class AuthService {
 
   private sanitizeUser(user: any) {
     const { passwordHash, ...sanitized } = user;
-    return sanitized;
+    return {
+      ...sanitized,
+      hasPassword: !!passwordHash,
+    };
   }
 }

@@ -17,6 +17,8 @@ function CallbackHandler() {
       return;
     }
 
+    const isNew = searchParams.get('new') === '1';
+
     // Store token
     localStorage.setItem('kooki_token', token);
 
@@ -39,12 +41,14 @@ function CallbackHandler() {
             window.location.href = '/dashboard';
           })
           .catch(() => {
-            // Even if complete-registration fails, redirect to dashboard
             window.location.href = '/dashboard';
           });
       } catch {
         window.location.href = '/dashboard';
       }
+    } else if (isNew) {
+      // New account created via Google without registration context → ask role
+      window.location.href = '/auth/choose-role';
     } else {
       window.location.href = '/dashboard';
     }

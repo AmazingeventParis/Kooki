@@ -157,7 +157,7 @@ export class AuthService {
 
     if (user) {
       const token = this.generateToken(user.id, user.email, user.role);
-      return { user: this.sanitizeUser(user), token };
+      return { user: this.sanitizeUser(user), token, isNew: false };
     }
 
     // Check if user exists by email (registered with password before)
@@ -175,7 +175,7 @@ export class AuthService {
         },
       });
       const token = this.generateToken(user.id, user.email, user.role);
-      return { user: this.sanitizeUser(user), token };
+      return { user: this.sanitizeUser(user), token, isNew: false };
     }
 
     // Create new user
@@ -196,7 +196,7 @@ export class AuthService {
     }).catch(() => {});
 
     const token = this.generateToken(user.id, user.email, user.role);
-    return { user: this.sanitizeUser(user), token };
+    return { user: this.sanitizeUser(user), token, isNew: true };
   }
 
   async completeRegistration(userId: string, body: {

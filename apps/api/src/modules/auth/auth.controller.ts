@@ -105,8 +105,10 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleCallback(@Req() req: any, @Res() res: Response) {
     const { user: profile } = req;
-    const { token } = await this.authService.validateOrCreateGoogleUser(profile);
+    const { token, isNew } = await this.authService.validateOrCreateGoogleUser(profile);
     const appUrl = this.configService.get<string>('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
-    res.redirect(`${appUrl}/auth/callback?token=${token}`);
+    const params = new URLSearchParams({ token });
+    if (isNew) params.set('new', '1');
+    res.redirect(`${appUrl}/auth/callback?${params.toString()}`);
   }
 }

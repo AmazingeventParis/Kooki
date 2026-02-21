@@ -51,10 +51,14 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Social login placeholder */}
+        {/* Google login */}
         <div className="space-y-3 mb-6">
           <button
             type="button"
+            onClick={() => {
+              const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+              window.location.href = `${apiUrl}/auth/google`;
+            }}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">

@@ -80,6 +80,11 @@ export class AuthService {
       throw new UnauthorizedException('Email ou mot de passe incorrect');
     }
 
+    // User registered via Google only (no password)
+    if (!user.passwordHash) {
+      throw new UnauthorizedException('Ce compte utilise la connexion Google. Cliquez sur "Continuer avec Google".');
+    }
+
     // Verify password
     const isValid = await bcrypt.compare(password, user.passwordHash);
     if (!isValid) {
@@ -116,6 +121,62 @@ export class AuthService {
       return null;
     }
     return this.sanitizeUser(user);
+  }
+
+  async validateOrCreateGoogleUser(profile: {
+    googleId: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    avatarUrl?: string;
+  }) {
+    // Check if user exists by googleId
+    let user = await this.prisma.user.findUnique({
+      where: { googleId: profile.googleId },
+    });
+
+    if (user) {
+      const token = this.generateToken(user.id, user.email, user.role);
+      return { user: this.sanitizeUser(user), token };
+    }
+
+    // Check if user exists by email (registered with password before)
+    user = await this.prisma.user.findUnique({
+      where: { email: profile.email },
+    });
+
+    if (user) {
+      // Link Google account to existing user
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleId: profile.googleId,
+          avatarUrl: user.avatarUrl || profile.avatarUrl,
+        },
+      });
+      const token = this.generateToken(user.id, user.email, user.role);
+      return { user: this.sanitizeUser(user), token };
+    }
+
+    // Create new user
+    user = await this.prisma.user.create({
+      data: {
+        email: profile.email,
+        googleId: profile.googleId,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        avatarUrl: profile.avatarUrl,
+      },
+    });
+
+    // Send welcome email (non-blocking)
+    this.email.sendWelcome({
+      email: user.email,
+      firstName: user.firstName || 'Utilisateur',
+    }).catch(() => {});
+
+    const token = this.generateToken(user.id, user.email, user.role);
+    return { user: this.sanitizeUser(user), token };
   }
 
   private generateToken(userId: string, email: string, role: string): string {

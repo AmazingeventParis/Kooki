@@ -16,6 +16,7 @@ interface AuthContextType extends AuthState {
   register: (data: { email: string; password: string; firstName?: string; lastName?: string; role?: string }) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  setTokenFromOAuth: (token: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -105,8 +106,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetchUser();
   };
 
+  const setTokenFromOAuth = (token: string) => {
+    apiClient.setToken(token);
+    setState((prev) => ({ ...prev, token }));
+    fetchUser();
+  };
+
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, refreshUser, setTokenFromOAuth }}>
       {children}
     </AuthContext.Provider>
   );

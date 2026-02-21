@@ -25,17 +25,13 @@ import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 
 interface RnaAssociation {
-  id: string;
-  titre: string;
-  id_ex: string; // RNA number (W...)
+  siren: string;
+  nom_complet: string;
+  identifiant_association?: string; // RNA (W...)
   siret?: string;
-  adresse_siege?: string;
-  adresse_code_postal?: string;
-  adresse_libelle_commune?: string;
-}
-
-interface RnaResponse {
-  association: RnaAssociation[];
+  code_postal?: string;
+  libelle_commune?: string;
+  adresse?: string;
 }
 
 export default function RegisterPage() {
@@ -75,11 +71,20 @@ export default function RegisterPage() {
     setOrgSearching(true);
     try {
       const res = await fetch(
-        `https://entreprise.data.gouv.fr/api/rna/v1/full_text/${encodeURIComponent(query)}?per_page=8`
+        `https://recherche-entreprises.api.gouv.fr/search?q=${encodeURIComponent(query)}&nature_juridique=9220&per_page=8&page=1`
       );
       if (res.ok) {
-        const data: RnaResponse = await res.json();
-        setOrgResults(data.association || []);
+        const data = await res.json();
+        const results: RnaAssociation[] = (data.results || []).map((r: any) => ({
+          siren: r.siren,
+          nom_complet: r.nom_complet,
+          identifiant_association: r.complements?.identifiant_association || null,
+          siret: r.siege?.siret || null,
+          code_postal: r.siege?.code_postal || null,
+          libelle_commune: r.siege?.libelle_commune || null,
+          adresse: r.siege?.adresse || null,
+        }));
+        setOrgResults(results);
       } else {
         setOrgResults([]);
       }
@@ -122,11 +127,10 @@ export default function RegisterPage() {
 
       if (role === 'ORG_ADMIN') {
         if (selectedOrg) {
-          registerData.organizationName = selectedOrg.titre;
-          registerData.organizationRna = selectedOrg.id_ex || undefined;
+          registerData.organizationName = selectedOrg.nom_complet;
+          registerData.organizationRna = selectedOrg.identifiant_association || undefined;
           registerData.organizationSiret = selectedOrg.siret || undefined;
-          const addr = [selectedOrg.adresse_siege, selectedOrg.adresse_code_postal, selectedOrg.adresse_libelle_commune].filter((x): x is string => !!x).join(', ');
-          if (addr) registerData.organizationAddress = addr;
+          if (selectedOrg.adresse) registerData.organizationAddress = selectedOrg.adresse;
         } else if (manualOrgName) {
           registerData.organizationName = manualOrgName;
         }
@@ -270,14 +274,14 @@ export default function RegisterPage() {
                     <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-200 divide-y divide-gray-100">
                       {orgResults.map((org) => (
                         <button
-                          key={org.id}
+                          key={org.siren}
                           type="button"
                           onClick={() => handleSelectOrg(org)}
                           className="w-full text-left px-4 py-3 hover:bg-kooki-50 transition-colors cursor-pointer"
                         >
-                          <p className="text-sm font-medium text-gray-900">{org.titre}</p>
+                          <p className="text-sm font-medium text-gray-900">{org.nom_complet}</p>
                           <p className="text-xs text-gray-400 mt-0.5">
-                            {[org.adresse_libelle_commune, org.id_ex].filter(Boolean).join(' - ')}
+                            {[org.libelle_commune, org.identifiant_association].filter((x): x is string => !!x).join(' - ')}
                           </p>
                         </button>
                       ))}
@@ -303,12 +307,12 @@ export default function RegisterPage() {
                 <div className="p-4 rounded-xl border-2 border-kooki-500 bg-kooki-50 mb-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-semibold text-gray-900">{selectedOrg.titre}</p>
+                      <p className="font-semibold text-gray-900">{selectedOrg.nom_complet}</p>
                       <p className="text-xs text-gray-500 mt-1">
-                        {[selectedOrg.id_ex, selectedOrg.siret && `SIRET: ${selectedOrg.siret}`].filter(Boolean).join(' - ')}
+                        {[selectedOrg.identifiant_association, selectedOrg.siret && `SIRET: ${selectedOrg.siret}`].filter((x): x is string => !!x).join(' - ')}
                       </p>
-                      {selectedOrg.adresse_libelle_commune && (
-                        <p className="text-xs text-gray-400 mt-0.5">{selectedOrg.adresse_libelle_commune}</p>
+                      {selectedOrg.libelle_commune && (
+                        <p className="text-xs text-gray-400 mt-0.5">{selectedOrg.libelle_commune}</p>
                       )}
                     </div>
                     <button

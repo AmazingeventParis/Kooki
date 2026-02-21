@@ -53,6 +53,18 @@ export class FundraisersController {
     return result;
   }
 
+  @Get('manage/:id')
+  @UseGuards(JwtAuthGuard)
+  async findByIdForOwner(
+    @CurrentUser('id') userId: string,
+    @Param('id') id: string,
+  ) {
+    const fundraiser = await this.fundraisersService.findByIdForOwner(userId, id);
+    return {
+      data: fundraiser,
+    };
+  }
+
   @Get(':slug')
   async findBySlug(@Param('slug') slug: string) {
     const fundraiser = await this.fundraisersService.findBySlug(slug);

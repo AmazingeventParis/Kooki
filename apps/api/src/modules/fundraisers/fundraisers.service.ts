@@ -240,6 +240,46 @@ export class FundraisersService {
     return fundraiser;
   }
 
+  async findByIdForOwner(userId: string, id: string) {
+    const fundraiser = await this.prisma.fundraiser.findUnique({
+      where: { id },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+          },
+        },
+        organization: {
+          select: {
+            id: true,
+            legalName: true,
+            isTaxEligible: true,
+          },
+        },
+        _count: {
+          select: { donations: { where: { status: 'COMPLETED' } } },
+        },
+      },
+    });
+
+    if (!fundraiser) {
+      throw new NotFoundException('Cagnotte non trouvee');
+    }
+
+    if (fundraiser.ownerUserId !== userId) {
+      throw new ForbiddenException("Vous n'etes pas le proprietaire de cette cagnotte");
+    }
+
+    return {
+      ...fundraiser,
+      donationCount: fundraiser._count.donations,
+      _count: undefined,
+    };
+  }
+
   async update(userId: string, fundraiserId: string, body: unknown) {
     const fundraiser = await this.findById(fundraiserId);
 

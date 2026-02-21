@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -16,38 +17,45 @@ import {
   Edit3,
   Copy,
   Check,
-  MoreHorizontal,
   Calendar,
+  Loader2,
+  AlertTriangle,
+  Euro,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Dialog } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/components/ui/toast';
+import { apiClient } from '@/lib/api-client';
 import { formatCurrency, progressPercent } from '@/lib/utils';
 
-// TODO: Replace with API call using id param
-const MOCK_FUNDRAISER = {
-  id: 'f1',
-  title: 'Aide pour la reconstruction du refuge animal de Nantes',
-  slug: 'refuge-animal',
-  type: 'PERSONAL' as const,
-  status: 'ACTIVE' as string,
-  planCode: 'PERSONAL_STANDARD',
-  currentAmount: 845000,
-  maxAmount: 1200000,
-  donationCount: 234,
-  createdAt: '2025-12-01T10:00:00Z',
-  updatedAt: '2025-12-20T14:30:00Z',
-};
+interface FundraiserData {
+  id: string;
+  title: string;
+  slug: string;
+  type: string;
+  status: string;
+  planCode: string;
+  currentAmount: number;
+  maxAmount: number;
+  donationCount: number;
+  coverImageUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
-const MOCK_DONATIONS = [
-  { id: '1', donorName: 'Pierre M.', amount: 5000, donorMessage: 'Courage !', status: 'COMPLETED', createdAt: '2025-12-20T14:30:00Z' },
-  { id: '2', donorName: 'Anonyme', amount: 10000, donorMessage: '', status: 'COMPLETED', createdAt: '2025-12-19T09:15:00Z' },
-  { id: '3', donorName: 'Sophie L.', amount: 2500, donorMessage: 'Pour les animaux', status: 'COMPLETED', createdAt: '2025-12-18T18:45:00Z' },
-  { id: '4', donorName: 'Famille Durand', amount: 15000, donorMessage: 'Bravo !', status: 'COMPLETED', createdAt: '2025-12-17T11:00:00Z' },
-  { id: '5', donorName: 'Jean-Paul R.', amount: 3000, donorMessage: '', status: 'COMPLETED', createdAt: '2025-12-16T16:20:00Z' },
-  { id: '6', donorName: 'Marie C.', amount: 7500, donorMessage: 'On est avec vous', status: 'COMPLETED', createdAt: '2025-12-15T08:00:00Z' },
-];
+interface DonationData {
+  id: string;
+  amount: number;
+  donorName: string;
+  donorMessage: string | null;
+  isAnonymous: boolean;
+  createdAt: string;
+}
 
 const STATUS_MAP: Record<string, { label: string; variant: 'success' | 'warning' | 'error' | 'default' }> = {
   ACTIVE: { label: 'Active', variant: 'success' },
@@ -58,16 +66,163 @@ const STATUS_MAP: Record<string, { label: string; variant: 'success' | 'warning'
 };
 
 export default function FundraiserManagementPage() {
-  const fundraiser = MOCK_FUNDRAISER;
-  const percent = progressPercent(fundraiser.currentAmount, fundraiser.maxAmount);
+  const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const id = params.id as string;
+
+  const [fundraiser, setFundraiser] = useState<FundraiserData | null>(null);
+  const [donations, setDonations] = useState<DonationData[]>([]);
+  const [totalDonations, setTotalDonations] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const statusInfo = STATUS_MAP[fundraiser.status] || STATUS_MAP.DRAFT;
+
+  // Dialogs
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawError, setWithdrawError] = useState('');
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [fundraiserRes, donationsRes] = await Promise.all([
+        apiClient.get<{ data: FundraiserData }>(`/fundraisers/manage/${id}`),
+        apiClient.get<{ data: DonationData[]; total: number }>(`/fundraisers/${id}/donations?pageSize=50`),
+      ]);
+      setFundraiser(fundraiserRes.data);
+      setDonations(donationsRes.data);
+      setTotalDonations(donationsRes.total);
+    } catch {
+      setError('Impossible de charger cette cagnotte');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleCopyLink = () => {
+    if (!fundraiser) return;
     navigator.clipboard.writeText(`${window.location.origin}/c/${fundraiser.slug}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const handlePause = async () => {
+    setActionLoading('pause');
+    try {
+      await apiClient.post(`/fundraisers/${id}/pause`);
+      setFundraiser((prev) => prev ? { ...prev, status: 'PAUSED' } : prev);
+      toast('success', 'Cagnotte mise en pause');
+    } catch {
+      toast('error', 'Erreur lors de la mise en pause');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResume = async () => {
+    setActionLoading('resume');
+    try {
+      await apiClient.post(`/fundraisers/${id}/resume`);
+      setFundraiser((prev) => prev ? { ...prev, status: 'ACTIVE' } : prev);
+      toast('success', 'Cagnotte reprise');
+    } catch {
+      toast('error', 'Erreur lors de la reprise');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleClose = async () => {
+    setActionLoading('close');
+    try {
+      await apiClient.post(`/fundraisers/${id}/close`);
+      setFundraiser((prev) => prev ? { ...prev, status: 'CLOSED' } : prev);
+      setCloseDialogOpen(false);
+      toast('success', 'Cagnotte cloturee');
+    } catch {
+      toast('error', 'Erreur lors de la cloture');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    const euros = parseFloat(withdrawAmount.replace(',', '.'));
+    if (isNaN(euros) || euros <= 0) {
+      setWithdrawError('Montant invalide');
+      return;
+    }
+    const cents = Math.round(euros * 100);
+    if (fundraiser && cents > fundraiser.currentAmount) {
+      setWithdrawError(`Maximum : ${formatCurrency(fundraiser.currentAmount)}`);
+      return;
+    }
+
+    setActionLoading('withdraw');
+    setWithdrawError('');
+    try {
+      await apiClient.post('/withdrawals', { fundraiserId: id, amount: cents });
+      setWithdrawDialogOpen(false);
+      setWithdrawAmount('');
+      toast('success', 'Demande de retrait enregistree');
+      fetchData();
+    } catch {
+      toast('error', 'Erreur lors de la demande de retrait');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 w-10 rounded-xl" />
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-64" />
+            <Skeleton className="h-4 w-40" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-24 rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-20 rounded-2xl" />
+        <Skeleton className="h-32 rounded-2xl" />
+        <Skeleton className="h-64 rounded-2xl" />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !fundraiser) {
+    return (
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center py-20">
+          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle size={28} className="text-red-500" />
+          </div>
+          <p className="text-gray-600 mb-4">{error || 'Cagnotte introuvable'}</p>
+          <Button variant="secondary" onClick={() => router.push('/dashboard')}>
+            <ArrowLeft size={16} />
+            Retour au dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const percent = progressPercent(fundraiser.currentAmount, fundraiser.maxAmount);
+  const statusInfo = STATUS_MAP[fundraiser.status] || STATUS_MAP.DRAFT;
+  const canManage = fundraiser.status === 'ACTIVE' || fundraiser.status === 'PAUSED';
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -107,10 +262,6 @@ export default function FundraiserManagementPage() {
               Voir
             </Button>
           </Link>
-          <Button variant="secondary" size="sm">
-            <Edit3 size={16} />
-            Modifier
-          </Button>
         </div>
       </div>
 
@@ -177,35 +328,63 @@ export default function FundraiserManagementPage() {
       </Card>
 
       {/* Actions */}
-      <Card hover={false}>
-        <h2 className="text-lg font-bold font-[family-name:var(--font-heading)] text-gray-900 mb-4">
-          Actions
-        </h2>
-        <div className="flex flex-wrap gap-3">
-          {fundraiser.status === 'ACTIVE' && (
-            <Button variant="secondary" size="md">
-              <Pause size={16} />
-              Mettre en pause
+      {canManage && (
+        <Card hover={false}>
+          <h2 className="text-lg font-bold font-[family-name:var(--font-heading)] text-gray-900 mb-4">
+            Actions
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            {fundraiser.status === 'ACTIVE' && (
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={handlePause}
+                isLoading={actionLoading === 'pause'}
+                disabled={!!actionLoading}
+              >
+                <Pause size={16} />
+                Mettre en pause
+              </Button>
+            )}
+            {fundraiser.status === 'PAUSED' && (
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleResume}
+                isLoading={actionLoading === 'resume'}
+                disabled={!!actionLoading}
+              >
+                <Play size={16} />
+                Reprendre
+              </Button>
+            )}
+            {fundraiser.currentAmount > 0 && (
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  setWithdrawAmount('');
+                  setWithdrawError('');
+                  setWithdrawDialogOpen(true);
+                }}
+                disabled={!!actionLoading}
+              >
+                <Wallet size={16} />
+                Demander un retrait
+              </Button>
+            )}
+            <Button
+              variant="danger"
+              size="md"
+              onClick={() => setCloseDialogOpen(true)}
+              disabled={!!actionLoading}
+            >
+              <X size={16} />
+              Cloturer
             </Button>
-          )}
-          {fundraiser.status === 'PAUSED' && (
-            <Button variant="primary" size="md">
-              <Play size={16} />
-              Reprendre
-            </Button>
-          )}
-          <Link href="/withdrawals">
-            <Button variant="primary" size="md">
-              <Wallet size={16} />
-              Demander un retrait
-            </Button>
-          </Link>
-          <Button variant="danger" size="md">
-            <X size={16} />
-            Cloturer
-          </Button>
-        </div>
-      </Card>
+          </div>
+        </Card>
+      )}
 
       {/* Donations table */}
       <Card hover={false}>
@@ -213,60 +392,136 @@ export default function FundraiserManagementPage() {
           <h2 className="text-lg font-bold font-[family-name:var(--font-heading)] text-gray-900">
             Historique des dons
           </h2>
-          <Badge variant="default">{MOCK_DONATIONS.length} dons</Badge>
+          <Badge variant="default">{totalDonations} don{totalDonations > 1 ? 's' : ''}</Badge>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                <th className="pb-3 font-medium">Donateur</th>
-                <th className="pb-3 font-medium">Message</th>
-                <th className="pb-3 font-medium">Statut</th>
-                <th className="pb-3 font-medium text-right">Montant</th>
-                <th className="pb-3 font-medium text-right">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {MOCK_DONATIONS.map((donation) => (
-                <tr key={donation.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-kooki-100 to-grape-500/10 flex items-center justify-center text-xs font-bold text-kooki-600 shrink-0">
-                        {donation.donorName[0]}
-                      </div>
-                      <span className="font-medium text-sm text-gray-900">
-                        {donation.donorName}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-3.5">
-                    <span className="text-sm text-gray-500 line-clamp-1">
-                      {donation.donorMessage || '-'}
-                    </span>
-                  </td>
-                  <td className="py-3.5">
-                    <Badge variant="success" size="sm">Confirme</Badge>
-                  </td>
-                  <td className="py-3.5 text-right">
-                    <span className="font-bold text-sm text-emerald-600">
-                      {formatCurrency(donation.amount)}
-                    </span>
-                  </td>
-                  <td className="py-3.5 text-right">
-                    <span className="text-sm text-gray-400">
-                      {new Date(donation.createdAt).toLocaleDateString('fr-FR', {
-                        day: 'numeric',
-                        month: 'short',
-                      })}
-                    </span>
-                  </td>
+        {donations.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-400 text-sm">Aucun don pour le moment</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                  <th className="pb-3 font-medium">Donateur</th>
+                  <th className="pb-3 font-medium">Message</th>
+                  <th className="pb-3 font-medium text-right">Montant</th>
+                  <th className="pb-3 font-medium text-right">Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {donations.map((donation) => (
+                  <tr key={donation.id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="py-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-kooki-100 to-grape-500/10 flex items-center justify-center text-xs font-bold text-kooki-600 shrink-0">
+                          {(donation.donorName || 'A')[0]}
+                        </div>
+                        <span className="font-medium text-sm text-gray-900">
+                          {donation.donorName || 'Anonyme'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3.5">
+                      <span className="text-sm text-gray-500 line-clamp-1">
+                        {donation.donorMessage || '-'}
+                      </span>
+                    </td>
+                    <td className="py-3.5 text-right">
+                      <span className="font-bold text-sm text-emerald-600">
+                        {formatCurrency(donation.amount)}
+                      </span>
+                    </td>
+                    <td className="py-3.5 text-right">
+                      <span className="text-sm text-gray-400">
+                        {new Date(donation.createdAt).toLocaleDateString('fr-FR', {
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
+
+      {/* Close confirmation dialog */}
+      <Dialog
+        isOpen={closeDialogOpen}
+        onClose={() => setCloseDialogOpen(false)}
+        title="Cloturer la cagnotte"
+        description="Cette action est irreversible. La cagnotte ne pourra plus recevoir de dons."
+        size="sm"
+      >
+        <div className="flex gap-3 mt-4">
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={() => setCloseDialogOpen(false)}
+            className="flex-1"
+          >
+            Annuler
+          </Button>
+          <Button
+            variant="danger"
+            size="md"
+            onClick={handleClose}
+            isLoading={actionLoading === 'close'}
+            className="flex-1"
+          >
+            Cloturer
+          </Button>
+        </div>
+      </Dialog>
+
+      {/* Withdrawal dialog */}
+      <Dialog
+        isOpen={withdrawDialogOpen}
+        onClose={() => setWithdrawDialogOpen(false)}
+        title="Demander un retrait"
+        description={`Solde disponible : ${formatCurrency(fundraiser.currentAmount)}`}
+        size="sm"
+      >
+        <div className="mt-4 space-y-4">
+          <Input
+            label="Montant (EUR)"
+            type="number"
+            min="1"
+            step="0.01"
+            placeholder="Ex: 50.00"
+            value={withdrawAmount}
+            onChange={(e) => {
+              setWithdrawAmount(e.target.value);
+              setWithdrawError('');
+            }}
+            error={withdrawError}
+            leftIcon={<Euro size={16} />}
+          />
+          <div className="flex gap-3">
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={() => setWithdrawDialogOpen(false)}
+              className="flex-1"
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleWithdraw}
+              isLoading={actionLoading === 'withdraw'}
+              className="flex-1"
+            >
+              Confirmer
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

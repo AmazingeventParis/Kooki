@@ -293,6 +293,64 @@ export class AuthService {
     return { message: 'Mot de passe mis a jour' };
   }
 
+  async deleteAccount(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('Utilisateur non trouve');
+    }
+
+    // Cascade delete in correct order
+    // 1. Tips linked to donations on user's fundraisers
+    const fundraiserIds = (
+      await this.prisma.fundraiser.findMany({
+        where: { ownerUserId: userId },
+        select: { id: true },
+      })
+    ).map((f) => f.id);
+
+    if (fundraiserIds.length > 0) {
+      const donationIds = (
+        await this.prisma.donation.findMany({
+          where: { fundraiserId: { in: fundraiserIds } },
+          select: { id: true },
+        })
+      ).map((d) => d.id);
+
+      if (donationIds.length > 0) {
+        await this.prisma.tip.deleteMany({ where: { donationId: { in: donationIds } } });
+        await this.prisma.taxReceipt.deleteMany({ where: { donationId: { in: donationIds } } });
+      }
+
+      // 2. Donations on user's fundraisers
+      await this.prisma.donation.deleteMany({ where: { fundraiserId: { in: fundraiserIds } } });
+
+      // 3. Withdrawals
+      await this.prisma.withdrawal.deleteMany({ where: { fundraiserId: { in: fundraiserIds } } });
+
+      // 4. Fundraisers
+      await this.prisma.fundraiser.deleteMany({ where: { ownerUserId: userId } });
+    }
+
+    // 5. Organizations (receipt counters + tax receipts first)
+    const orgIds = (
+      await this.prisma.organization.findMany({
+        where: { ownerUserId: userId },
+        select: { id: true },
+      })
+    ).map((o) => o.id);
+
+    if (orgIds.length > 0) {
+      await this.prisma.receiptCounter.deleteMany({ where: { organizationId: { in: orgIds } } });
+      await this.prisma.organization.deleteMany({ where: { ownerUserId: userId } });
+    }
+
+    // 6. Audit logs
+    await this.prisma.auditLog.deleteMany({ where: { actorUserId: userId } });
+
+    // 7. User
+    await this.prisma.user.delete({ where: { id: userId } });
+  }
+
   private generateToken(userId: string, email: string, role: string): string {
     const payload: JwtPayload = {
       sub: userId,

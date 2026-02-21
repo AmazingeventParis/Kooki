@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, UseGuards, Req, Res } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, UseGuards, Req, Res } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
@@ -82,6 +82,16 @@ export class AuthController {
     return {
       data: result,
       message: 'Mot de passe mis a jour',
+    };
+  }
+
+  @Delete('account')
+  @UseGuards(JwtAuthGuard)
+  async deleteAccount(@CurrentUser('id') userId: string) {
+    await this.authService.deleteAccount(userId);
+    return {
+      data: null,
+      message: 'Compte supprime',
     };
   }
 

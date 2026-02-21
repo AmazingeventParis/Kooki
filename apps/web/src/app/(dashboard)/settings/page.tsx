@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Lock, Mail, Save, Loader2 } from 'lucide-react';
+import { User, Lock, Mail, Save, Loader2, Trash2, AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/auth-context';
 import { apiClient } from '@/lib/api-client';
 
 export default function SettingsPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const { toast } = useToast();
 
   // Profile form
@@ -24,6 +24,11 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+
+  // Delete account
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const hasPassword = !!(user as any)?.hasPassword;
 
@@ -202,6 +207,93 @@ export default function SettingsPage() {
               {!hasPassword ? 'Definir le mot de passe' : 'Changer le mot de passe'}
             </Button>
           </form>
+        </Card>
+      </motion.div>
+
+      {/* Delete account */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Card hover={false} className="border-red-200">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center">
+              <Trash2 size={16} className="text-white" />
+            </div>
+            <h2 className="text-lg font-bold font-[family-name:var(--font-heading)] text-gray-900">
+              Supprimer le compte
+            </h2>
+          </div>
+
+          {!showDeleteConfirm ? (
+            <div>
+              <p className="text-sm text-gray-500 mb-4">
+                La suppression de votre compte est definitive. Toutes vos donnees, cagnottes et historique seront supprimes.
+              </p>
+              <Button
+                variant="ghost"
+                size="md"
+                className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <Trash2 size={16} />
+                Supprimer mon compte
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3">
+                <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
+                <div className="text-sm text-red-700">
+                  <p className="font-semibold mb-1">Action irreversible</p>
+                  <p>Toutes vos cagnottes, donations recues et donnees personnelles seront definitivement supprimees.</p>
+                </div>
+              </div>
+
+              <Input
+                label="Tapez SUPPRIMER pour confirmer"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="SUPPRIMER"
+              />
+
+              <div className="flex gap-3">
+                <Button
+                  variant="ghost"
+                  size="md"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteConfirmText('');
+                  }}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="md"
+                  className="flex-1 bg-red-500 text-white hover:bg-red-600"
+                  disabled={deleteConfirmText !== 'SUPPRIMER'}
+                  isLoading={deleteLoading}
+                  onClick={async () => {
+                    setDeleteLoading(true);
+                    try {
+                      await apiClient.delete('/auth/account');
+                      logout();
+                      window.location.href = '/';
+                    } catch {
+                      toast('error', 'Erreur lors de la suppression');
+                      setDeleteLoading(false);
+                    }
+                  }}
+                >
+                  <Trash2 size={16} />
+                  Confirmer la suppression
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       </motion.div>
     </div>

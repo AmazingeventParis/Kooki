@@ -7,6 +7,8 @@ export interface User {
   lastName?: string;
   role: UserRole;
   avatarUrl?: string;
+  hasPassword?: boolean;
+  organizations?: Organization[];
   createdAt: string;
   updatedAt: string;
 }
@@ -57,6 +59,7 @@ export interface Organization {
   legalName: string;
   email: string;
   siret?: string;
+  rnaNumber?: string;
   address?: string;
   stripeAccountId?: string;
   isTaxEligible: boolean;

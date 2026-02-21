@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/api-client';
+import { useAuth } from '@/lib/auth-context';
 
 const STEPS = [
   { number: 1, label: 'Type' },
@@ -33,11 +34,17 @@ const STEPS = [
 
 export default function NewFundraiserPage() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
+  const { user } = useAuth();
+
+  // Auto-detect type from user role: ORG_ADMIN → ASSOCIATION, else PERSONAL
+  const autoType = user?.role === 'ORG_ADMIN' ? 'ASSOCIATION' : 'PERSONAL';
+  const skipTypeStep = !!user;
+
+  const [step, setStep] = useState(skipTypeStep ? 2 : 1);
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
-    type: '' as 'PERSONAL' | 'ASSOCIATION' | '',
+    type: autoType as 'PERSONAL' | 'ASSOCIATION' | '',
     title: '',
     description: '',
     coverImageUrl: '',
@@ -430,7 +437,7 @@ export default function NewFundraiserPage() {
           variant="ghost"
           size="lg"
           onClick={handleBack}
-          disabled={step === 1}
+          disabled={step === 1 || (skipTypeStep && step === 2)}
         >
           <ArrowLeft size={18} />
           Retour

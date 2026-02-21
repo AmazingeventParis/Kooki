@@ -44,6 +44,7 @@ export const createOrganizationSchema = z.object({
   legalName: z.string().min(2).max(200),
   email: z.string().email(),
   siret: z.string().regex(/^\d{14}$/, 'SIRET invalide (14 chiffres)').optional(),
+  rnaNumber: z.string().max(20).optional(),
   address: z.string().max(500).optional(),
 });
 

@@ -19,7 +19,7 @@ const navItems = [
   { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
   { href: '/dashboard', label: 'Mes cagnottes', icon: Heart, matchPrefix: '/fundraisers' },
   { href: '/withdrawals', label: 'Retraits', icon: Wallet },
-  { href: '/dashboard', label: 'Organisation', icon: Building2, role: 'ORG_ADMIN' },
+  { href: '/organization', label: 'Organisation', icon: Building2, role: 'ORG_ADMIN' },
   { href: '/settings', label: 'Parametres', icon: Settings },
 ];
 

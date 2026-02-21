@@ -80,7 +80,7 @@ const MOCK_FUNDRAISERS = [
     id: '1',
     title: 'Aide pour la reconstruction du refuge animal',
     slug: 'refuge-animal',
-    coverImageUrl: '',
+    coverImageUrl: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=600&h=400&fit=crop&q=80',
     currentAmount: 845000,
     maxAmount: 1200000,
     donationCount: 234,
@@ -91,7 +91,7 @@ const MOCK_FUNDRAISERS = [
     id: '2',
     title: 'Financer le voyage scolaire des CM2',
     slug: 'voyage-scolaire-cm2',
-    coverImageUrl: '',
+    coverImageUrl: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=600&h=400&fit=crop&q=80',
     currentAmount: 312000,
     maxAmount: 500000,
     donationCount: 89,
@@ -102,7 +102,7 @@ const MOCK_FUNDRAISERS = [
     id: '3',
     title: 'Un toit pour la famille Dupont',
     slug: 'toit-famille-dupont',
-    coverImageUrl: '',
+    coverImageUrl: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=600&h=400&fit=crop&q=80',
     currentAmount: 2100000,
     maxAmount: 3000000,
     donationCount: 412,
@@ -367,13 +367,21 @@ export default function LandingPage() {
               >
                 <Link href={`/c/${fundraiser.slug}`}>
                   <Card padding="none" className="overflow-hidden group" gradientBorder>
-                    {/* Cover image placeholder */}
+                    {/* Cover image */}
                     <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Heart size={48} className="text-gray-300 group-hover:text-kooki-300 transition-colors duration-300" />
-                      </div>
+                      {fundraiser.coverImageUrl ? (
+                        <img
+                          src={fundraiser.coverImageUrl}
+                          alt={fundraiser.title}
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Heart size={48} className="text-gray-300 group-hover:text-kooki-300 transition-colors duration-300" />
+                        </div>
+                      )}
                       <div className="absolute top-3 left-3">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${CATEGORY_COLORS[fundraiser.category] || 'bg-gray-100 text-gray-700'}`}>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${CATEGORY_COLORS[fundraiser.category] || 'bg-gray-100 text-gray-700'}`}>
                           {fundraiser.category}
                         </span>
                       </div>

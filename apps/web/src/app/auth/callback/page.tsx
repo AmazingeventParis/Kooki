@@ -1,29 +1,27 @@
 'use client';
 
 import { useEffect, useRef, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
+import { useSearchParams } from 'next/navigation';
 
 function CallbackHandler() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const { setTokenFromOAuth } = useAuth();
   const processed = useRef(false);
 
   useEffect(() => {
     if (processed.current) return;
+    processed.current = true;
+
     const token = searchParams.get('token');
     if (token) {
-      processed.current = true;
-      setTokenFromOAuth(token);
-      router.replace('/dashboard');
+      localStorage.setItem('kooki_token', token);
+      window.location.href = '/dashboard';
     } else {
-      router.replace('/login');
+      window.location.href = '/login';
     }
-  }, [searchParams, router, setTokenFromOAuth]);
+  }, [searchParams]);
 
   return (
-    <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-kooki-500 mx-auto mb-4" />
         <p className="text-gray-500">Connexion en cours...</p>
@@ -36,7 +34,7 @@ export default function AuthCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex items-center justify-center min-h-screen">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-kooki-500 mx-auto" />
         </div>
       }

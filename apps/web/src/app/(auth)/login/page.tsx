@@ -51,7 +51,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Google login */}
+        {/* Google login — only for existing accounts */}
         <div className="space-y-3 mb-6">
           <button
             type="button"
@@ -79,7 +79,7 @@ export default function LoginPage() {
                 fill="#EA4335"
               />
             </svg>
-            Continuer avec Google
+            Se connecter avec Google
           </button>
         </div>
 
@@ -89,7 +89,7 @@ export default function LoginPage() {
             <div className="w-full border-t border-gray-200" />
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="bg-white px-4 text-gray-400 uppercase tracking-wider">ou</span>
+            <span className="bg-white px-4 text-gray-400 uppercase tracking-wider">ou par email</span>
           </div>
         </div>
 
